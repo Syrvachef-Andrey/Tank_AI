@@ -1,9 +1,9 @@
 from ultralytics import YOLO
 
-model = YOLO("/home/andrey/tank_AI/Tank_AI/runs/detect/train2/weights/best.pt")
+model = YOLO("/home/andrey/tank_AI/Tank_AI/runs/detect/train3/weights/best.pt")
 
 # Выполнение обнаружения объектов на изображении
-results = model.predict(source="img.png", save=True, conf=0.5)
+results = model.predict(source="uaz-patriot.jpg", save=True, conf=0.5)
 
 # Вывод результатов
 for result in results:
