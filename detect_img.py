@@ -1,17 +1,14 @@
 from ultralytics import YOLO
 
-model = YOLO("/home/andrey/tank_AI/Tank_AI/runs/detect/train3/weights/best.pt")
+model = YOLO("/home/andrey/PycharmProjects/Tank_AI/runs/detect/train/weights/best.pt")
 
-# Выполнение обнаружения объектов на изображении
-results = model.predict(source="uaz-patriot.jpg", save=True, conf=0.5)
+results = model.predict(source="/home/andrey/PycharmProjects/Tank_AI/images_for_test/uaz-patriot.jpg", save=True, conf=0.9)
 
-# Вывод результатов
 for result in results:
     print("Обнаруженные объекты:")
     for box in result.boxes:
-        class_id = model.names[box.cls.item()]  # Имя класса
-        confidence = box.conf.item()  # Уверенность
+        class_id = model.names[box.cls.item()]
+        confidence = box.conf.item()
         print(f"Класс: {class_id}, Уверенность: {confidence}")
 
-# Результаты сохраняются в папку 'runs/detect/predict' по умолчанию
 print("Результаты сохранены в папке 'runs/detect/predict'")

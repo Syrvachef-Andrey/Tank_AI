@@ -1,6 +1,25 @@
-from ultralytics import YOLO, settings
-model = YOLO("yolo11s.pt")
+import cv2
 
-print(settings)
+from ultralytics import YOLO
 
-results = model.train(data='/home/andrey/tank_AI/Tank_AI/dataset/data.yaml', epochs=150, imgsz=180)
+model = YOLO("/home/andrey/PycharmProjects/Tank_AI/runs/detect/train2/weights/best.pt")
+
+cap = cv2.VideoCapture(0)
+
+while cap.isOpened():
+    success, frame = cap.read()
+
+    if success:
+        results = model.track(frame, persist=True, conf=0.8)
+
+        annotated_frame = results[0].plot()
+
+        cv2.imshow("TANKS", annotated_frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    else:
+        break
+
+cap.release()
+cv2.destroyWindow()
