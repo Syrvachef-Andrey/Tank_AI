@@ -6,10 +6,11 @@ koefficent_of_speed = 0.75
 coordinates_list = []
 coordinate_of_points = ()
 object_tracking_list = list()
-model = YOLO("/home/andrey/PycharmProjects/Tank_AI/runs/detect/train2/weights/best.pt")
-
 x_len = 640
 y_len = 480
+
+model = YOLO("/home/andrey/PycharmProjects/Tank_AI/runs/detect/train2/weights/best.pt")
+
 cap = cv2.VideoCapture(0)
 
 def calculate_coordinates_of_point(coordinates_list):
@@ -25,21 +26,21 @@ def calculate_coordinates_of_point(coordinates_list):
 
 def calculate_object_tracking(x_len, y_len, list_of_center):
     list_of_numbers = [] # 1 - forward, 2 - right, 3 - left, 4 - backward
-    if 0 < list_of_center[0] < 320 and 0 < list_of_center[1] < 240:
+    if 0 < list_of_center[0] < x_len // 2 and 0 < list_of_center[1] < y_len // 2:
         print('alfa')
-        list_of_numbers = [4, 1, abs(320 - list_of_center[0]) * koefficent_of_speed,
-                           abs(240 - list_of_center[1]) * koefficent_of_speed]
-    elif 320 < list_of_center[0] < 640 and 0 < list_of_center[1] < 240:
+        list_of_numbers = [4, 1, (abs(x_len // 2 - list_of_center[0]) * koefficent_of_speed / 90) + 90,
+                           (abs(y_len // 2 - list_of_center[1]) * koefficent_of_speed / 90) + (180 - 45) // 2]
+    elif x_len // 2 < list_of_center[0] < x_len and 0 < list_of_center[1] < y_len // 2:
         print('betta')
-        list_of_numbers = [2, 1, abs(320 - list_of_center[0]) * koefficent_of_speed,
-                           abs(240 - list_of_center[1]) * koefficent_of_speed]
-    elif 0 < list_of_center[0] < 320 and 240 < list_of_center[1] < 480:
+        list_of_numbers = [2, 1, (abs(x_len // 2 - list_of_center[0]) * koefficent_of_speed / 90),
+                           (abs(y_len // 2 - list_of_center[1]) * koefficent_of_speed / 90) + (180 - 45) // 2]
+    elif 0 < list_of_center[0] < x_len // 2 and y_len // 2 < list_of_center[1] < y_len:
         print('gamma')
-        list_of_numbers = [4, 3, abs(320 - list_of_center[0]) * koefficent_of_speed,
-                           abs(240 - list_of_center[1]) * koefficent_of_speed]
+        list_of_numbers = [4, 3, (abs(x_len // 2 - list_of_center[0]) * koefficent_of_speed / 90) + 90,
+                           (abs(y_len // 2 - list_of_center[1]) * koefficent_of_speed / 45)]
     else:
-        list_of_numbers = [2, 3, abs(320 - list_of_center[0]) * koefficent_of_speed,
-                           abs(240 - list_of_center[1]) * koefficent_of_speed]
+        list_of_numbers = [2, 3, (abs(x_len // 2 - list_of_center[0]) * koefficent_of_speed / 90),
+                           (abs(y_len // 2 - list_of_center[1]) * koefficent_of_speed / 45)]
         print('tetta')
     return list_of_numbers
 
