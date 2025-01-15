@@ -8,8 +8,8 @@ coordinate_of_points = ()
 object_tracking_list = list()
 x_len = 640
 y_len = 480
-
-model = YOLO("/home/andrey/PycharmProjects/Tank_AI/runs/detect/train2/weights/best.pt")
+#
+model = YOLO("/home/andrey/PycharmProjects/Tank_AI/runs/detect/train/weights/best.pt")
 
 cap = cv2.VideoCapture(0)
 
