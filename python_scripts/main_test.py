@@ -9,7 +9,7 @@ angle_tracking_camera_vertical = 40  # Угол обзора камеры по �
 name_of_object = None
 
 # Загрузка модели YOLO
-model = YOLO("/home/andrey/PycharmProjects/Tank_AI/runs/detect/train/weights/best.pt")
+model = YOLO("/runs/detect/train/weights/best.pt")
 
 # Инициализация видеопотока
 cap = cv2.VideoCapture(0)

@@ -1,6 +1,6 @@
 import os
 
-directory_path = '/home/andrey/PycharmProjects/Tank_AI/dataset/destroyed_tank/labels'
+directory_path = '/dataset/destroyed_tank/labels'
 
 files = [f for f in os.listdir(directory_path) if
          os.path.isfile(os.path.join(directory_path, f)) and f.endswith('.txt')]

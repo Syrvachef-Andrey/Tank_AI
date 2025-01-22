@@ -11,7 +11,7 @@ y_len = 480
 angle_tracking_camera_horizontal = 60
 angle_tracking_camera_vertical = 40
 
-model = YOLO("/home/andrey/PycharmProjects/Tank_AI/runs/detect/train/weights/best.pt")
+model = YOLO("/runs/detect/train/weights/best.pt")
 
 cap = cv2.VideoCapture(0)
 

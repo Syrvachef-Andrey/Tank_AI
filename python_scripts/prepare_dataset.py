@@ -14,8 +14,8 @@ input_folders = [
     'dataset//destroyed_tank/images'
 ]
 
-BASE_DIR_ABSOLUTE = "/home/andrey/PycharmProjects/Tank_AI"
-OUT_DIR = 'dataset_prepared'
+BASE_DIR_ABSOLUTE = "/"
+OUT_DIR = '../dataset_prepared'
 
 OUT_IMAGES = os.path.join(OUT_DIR, 'images')
 OUT_LABELS = os.path.join(OUT_DIR, 'labels')

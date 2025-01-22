@@ -1,6 +1,6 @@
 from ultralytics import YOLO
 
-model = YOLO("/home/andrey/PycharmProjects/Tank_AI/runs/detect/train/weights/best.pt")
+model = YOLO("/runs/detect/train/weights/best.pt")
 
 results = model.predict(source="/home/andrey/PycharmProjects/Tank_AI/images_for_test/img_3.png", save=True, conf=0.9)
 
