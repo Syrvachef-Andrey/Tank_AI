@@ -2,7 +2,7 @@ from ultralytics import YOLO
 
 model = YOLO("/home/andrey/PycharmProjects/Tank_AI/runs/detect/train/weights/best.pt")
 
-results = model.predict(source="/home/andrey/PycharmProjects/Tank_AI/images_for_test/uaz-patriot.jpg", save=True, conf=0.9)
+results = model.predict(source="/home/andrey/PycharmProjects/Tank_AI/images_for_test/img_3.png", save=True, conf=0.9)
 
 for result in results:
     print("Обнаруженные объекты:")

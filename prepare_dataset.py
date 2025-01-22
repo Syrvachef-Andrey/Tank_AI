@@ -10,7 +10,8 @@ input_folders = [
     'dataset//btr-80/images',
     'dataset//btr-striker/images',
     'dataset//leopard/images',
-    'dataset//T-90/images'
+    'dataset//T-90/images',
+    'dataset//destroyed_tank/images'
 ]
 
 BASE_DIR_ABSOLUTE = "/home/andrey/PycharmProjects/Tank_AI"
@@ -24,7 +25,7 @@ OUT_VAL_IMAGES = os.path.join(OUT_IMAGES, 'val')
 OUT_TRAIN_LABELS = os.path.join(OUT_LABELS, 'train')
 OUT_VAL_LABELS = os.path.join(OUT_LABELS, 'val')
 
-coeff = [40, 60]
+coeff = [80, 20]
 exceptions = ['classes']
 
 if int(coeff[0]) + int(coeff[1]) > 100:
