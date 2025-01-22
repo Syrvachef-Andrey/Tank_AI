@@ -8,7 +8,9 @@ coordinate_of_points = ()
 object_tracking_list = list()
 x_len = 640
 y_len = 480
-#
+angle_tracking_camera_horizontal = 60
+angle_tracking_camera_vertical = 40
+
 model = YOLO("/home/andrey/PycharmProjects/Tank_AI/runs/detect/train/weights/best.pt")
 
 cap = cv2.VideoCapture(0)
@@ -24,23 +26,24 @@ def calculate_coordinates_of_point(coordinates_list):
     print(coordinate_of_points)
     return coordinate_of_points
 
-def calculate_object_tracking(x_len, y_len, list_of_center):
-    list_of_numbers = [] # 1 - forward, 2 - right, 3 - left, 4 - backward
+def calculate_object_tracking(x_len, y_len, list_of_center, angle_horizontal, angle_vertical):
+    list_of_numbers = [] # 1 - forward, 2 - right, 3 - backward, 4 - left
+    dx = list_of_center[0] - x_len // 2
+    angle_x = (dx / (x_len // 2)) * (angle_horizontal / 2)
+    # Расчет угла по вертикали
+    dy = list_of_center[1] - y_len // 2
+    angle_y = (dy / (y_len // 2)) * (angle_vertical / 2)
     if 0 < list_of_center[0] < x_len // 2 and 0 < list_of_center[1] < y_len // 2:
         print('alfa')
-        list_of_numbers = [4, 1, (abs(x_len // 2 - list_of_center[0]) * koefficent_of_speed / 90) + 90,
-                           (abs(y_len // 2 - list_of_center[1]) * koefficent_of_speed / 90) + (180 - 45) // 2]
+        list_of_numbers = [4, 1, angle_x, angle_y]
     elif x_len // 2 < list_of_center[0] < x_len and 0 < list_of_center[1] < y_len // 2:
         print('betta')
-        list_of_numbers = [2, 1, (abs(x_len // 2 - list_of_center[0]) * koefficent_of_speed / 90),
-                           (abs(y_len // 2 - list_of_center[1]) * koefficent_of_speed / 90) + (180 - 45) // 2]
+        list_of_numbers = [2, 1, angle_x, angle_y]
     elif 0 < list_of_center[0] < x_len // 2 and y_len // 2 < list_of_center[1] < y_len:
         print('gamma')
-        list_of_numbers = [4, 3, (abs(x_len // 2 - list_of_center[0]) * koefficent_of_speed / 90) + 90,
-                           (abs(y_len // 2 - list_of_center[1]) * koefficent_of_speed / 45)]
+        list_of_numbers = [4, 3, angle_x, angle_y]
     else:
-        list_of_numbers = [2, 3, (abs(x_len // 2 - list_of_center[0]) * koefficent_of_speed / 90),
-                           (abs(y_len // 2 - list_of_center[1]) * koefficent_of_speed / 45)]
+        list_of_numbers = [2, 3, angle_x, angle_y]
         print('tetta')
     return list_of_numbers
 
@@ -62,7 +65,9 @@ while cap.isOpened():
         if len(coordinate_of_points) == 2:
             cv2.circle(annotated_frame, coordinate_of_points, 5, (0, 255, 0), -1)
 
-            object_tracking_list = calculate_object_tracking(x_len, y_len, coordinate_of_points)
+            object_tracking_list = calculate_object_tracking(x_len, y_len, coordinate_of_points,
+                                                             angle_tracking_camera_horizontal,
+                                                             angle_tracking_camera_vertical)
 
             print(object_tracking_list)
 
