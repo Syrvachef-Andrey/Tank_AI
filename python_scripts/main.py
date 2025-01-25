@@ -1,89 +1,211 @@
 import cv2
-
 from ultralytics import YOLO
+import serial
+import time
 
-koefficent_of_speed = 0.75
-coordinates_list = []
-coordinate_of_points = ()
-object_tracking_list = list()
+koeff = 0
+name_of_object = None
 x_len = 640
 y_len = 480
 angle_tracking_camera_horizontal = 60
 angle_tracking_camera_vertical = 40
+names_of_objects = ['abrams', 'btr-80', 'btr-striker', 'leopard', 'T-90', 'destroyed_tank']
 
-model = YOLO("/runs/detect/train/weights/best.pt")
+port = '/dev/ttyUSB0'
+arduino = serial.Serial(port, 115200, timeout=1)
 
-cap = cv2.VideoCapture(0)
+model_ncnn_path = "/home/andrey/tank_ai/yolo_model/best_ncnn_model"
+model_path = "/home/andrey/PycharmProjects/Tank_AI/runs/detect/train2/weights/best.pt"
+model = YOLO(model_path)
+if model is None:
+    print("no yolo model")
+    exit(1)
+
+# Инициализация веб-камеры
+cap = cv2.VideoCapture(0)  # 0 — индекс веб-камеры по умолчанию
+if not cap.isOpened():
+    print("Ошибка: Не удалось открыть веб-камеру.")
+    exit(1)
+
+# Установка разрешения камеры
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, x_len)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, y_len)
+
+# Размер окна для скользящего среднего
+window_size = 5
+
+# Списки для хранения последних значений координат центра
+center_x_values = []
+center_y_values = []
+
+# Списки для хранения последних значений углов
+servo_x_values = []
+servo_y_values = []
+
+
+def send_list(data_list):
+    message = ",".join(map(str, data_list)) + "\n"
+    arduino.write(message.encode())
+    print(f"Sent: {data_list}")
+
+    response = arduino.readline().decode().strip()
+    while not response:
+        response = arduino.readline().decode().strip()
+    print(f"Received: {response}")
+
 
 def calculate_coordinates_of_point(coordinates_list):
-    coordinate_of_points = ()
     if len(coordinates_list) == 4:
-        coordinate_of_box_x_min, coordinate_of_box_y_min, coordinate_of_box_x_max, coordinate_of_box_y_max = \
-            coordinates_list[0], coordinates_list[1], coordinates_list[2], coordinates_list[3]
-        print(coordinate_of_box_x_min, coordinate_of_box_y_min, coordinate_of_box_x_max, coordinate_of_box_y_max)
-        coordinate_of_points = (int((abs(coordinate_of_box_x_max + coordinate_of_box_x_min) // 2)),
-                                int((abs(coordinate_of_box_y_max + coordinate_of_box_y_min)) // 2))
-    print(coordinate_of_points)
-    return coordinate_of_points
+        x_min, y_min, x_max, y_max = coordinates_list
+        center_x = int((x_min + x_max) // 2)
+        center_y = int((y_min + y_max) // 2)
+        return center_x, center_y
+    return None
 
-def calculate_object_tracking(x_len, y_len, list_of_center, angle_horizontal, angle_vertical):
-    list_of_numbers = [] # 1 - forward, 2 - right, 3 - backward, 4 - left
-    dx = list_of_center[0] - x_len // 2
+
+def smooth_center(center_point, window_size):
+    """
+    Сглаживает координаты центра объекта с использованием скользящего среднего.
+    :param center_point: Координаты центра объекта (x, y).
+    :param window_size: Размер окна для скользящего среднего.
+    :return: Сглаженные координаты центра (x, y).
+    """
+    if not center_point:
+        return None
+
+    center_x, center_y = center_point
+
+    # Добавляем новые значения в списки
+    center_x_values.append(center_x)
+    center_y_values.append(center_y)
+
+    # Удаляем старые значения, если список превышает размер окна
+    if len(center_x_values) > window_size:
+        center_x_values.pop(0)
+        center_y_values.pop(0)
+
+    # Вычисляем среднее значение
+    smoothed_x = sum(center_x_values) / len(center_x_values)
+    smoothed_y = sum(center_y_values) / len(center_y_values)
+
+    return int(smoothed_x), int(smoothed_y)
+
+
+def calculate_object_tracking(x_len, y_len, center_point, angle_horizontal, angle_vertical):
+    if not center_point:
+        return None
+
+    center_x, center_y = center_point
+
+    dx = center_x - x_len // 2
+    dy = center_y - y_len // 2
+
     angle_x = (dx / (x_len // 2)) * (angle_horizontal / 2)
-    # Расчет угла по вертикали
-    dy = list_of_center[1] - y_len // 2
     angle_y = (dy / (y_len // 2)) * (angle_vertical / 2)
-    if 0 < list_of_center[0] < x_len // 2 and 0 < list_of_center[1] < y_len // 2:
-        print('alfa')
-        list_of_numbers = [4, 1, angle_x, angle_y]
-    elif x_len // 2 < list_of_center[0] < x_len and 0 < list_of_center[1] < y_len // 2:
-        print('betta')
-        list_of_numbers = [2, 1, angle_x, angle_y]
-    elif 0 < list_of_center[0] < x_len // 2 and y_len // 2 < list_of_center[1] < y_len:
-        print('gamma')
-        list_of_numbers = [4, 3, angle_x, angle_y]
-    else:
-        list_of_numbers = [2, 3, angle_x, angle_y]
-        print('tetta')
-    return list_of_numbers
 
-while cap.isOpened():
-    success, frame = cap.read()
+    servo_x = 90 - angle_x
+    servo_x = max(0, min(180, servo_x))
 
-    if success:
-        results = model.track(frame, persist=True, conf=0.2)
-        annotated_frame = results[0].plot()
+    servo_y = 112.5 - angle_y
+    servo_y = max(45, min(180, servo_y))
 
-        boxes =results[0].boxes
-        for box in boxes:
-            coordinates = box.xyxy.tolist()
-            for lst in coordinates:
-                for i in lst:
-                    coordinates_list.append(i)
-                    coordinate_of_points = calculate_coordinates_of_point(coordinates_list)
+    return servo_x, servo_y
 
-        if len(coordinate_of_points) == 2:
-            cv2.circle(annotated_frame, coordinate_of_points, 5, (0, 255, 0), -1)
 
-            object_tracking_list = calculate_object_tracking(x_len, y_len, coordinate_of_points,
-                                                             angle_tracking_camera_horizontal,
-                                                             angle_tracking_camera_vertical)
+def moving_average(values, new_value, window_size):
+    """
+    Добавляет новое значение в список и возвращает среднее значение.
+    :param values: Список последних значений.
+    :param new_value: Новое значение для добавления.
+    :param window_size: Размер окна (количество значений для усреднения).
+    :return: Среднее значение.
+    """
+    values.append(new_value)
+    if len(values) > window_size:
+        values.pop(0)  # Удаляем самое старое значение
+    return sum(values) / len(values)
 
-            print(object_tracking_list)
 
+try:
+    while True:
+        # Захват кадра с веб-камеры
+        ret, frame = cap.read()
+        if not ret:
+            print("Ошибка: Не удалось захватить кадр.")
+            break
+
+        # Детекция объекта
+        results = model.track(frame, persist=True, conf=0.2, max_det=1)
+
+        if results and results[0].boxes:
+            annotated_frame = results[0].plot()  # Визуализация bounding box
+            boxes = results[0].boxes
+            coordinates_list = []
+            if len(boxes) > 0:
+                for box in boxes:
+                    name_of_object = model.names[box.cls.item()]
+                confidences = boxes.conf
+                max_confidence_idx = confidences.argmax()
+                coordinates = boxes.xyxy[max_confidence_idx].tolist()
+                coordinates_list.extend(coordinates)
+            else:
+                name_of_object = None
+
+            center_point = calculate_coordinates_of_point(coordinates_list)
+            if center_point:
+                # Сглаживаем координаты центра
+                smoothed_center = smooth_center(center_point, window_size)
+                print(f"Smoothed center: {smoothed_center}")
+
+                if 0 <= smoothed_center[0] < x_len and 0 <= smoothed_center[1] < y_len:
+                    # Визуализация сглаженного центра объекта
+                    cv2.circle(annotated_frame, smoothed_center, 5, (0, 255, 0), -1)
+
+                    # Расчет углов для сервопривода
+                    angles = calculate_object_tracking(x_len, y_len, smoothed_center,
+                                                       angle_tracking_camera_horizontal,
+                                                       angle_tracking_camera_vertical)
+
+                    if angles:
+                        servo_x, servo_y = angles
+                        koeff += 1
+                        # Применяем скользящее среднее для сглаживания углов
+                        servo_x_smoothed = moving_average(servo_x_values, servo_x, window_size)
+                        servo_y_smoothed = moving_average(servo_y_values, servo_y, window_size)
+
+                        print(f"Smoothed angles for servo: X={servo_x_smoothed:.2f}, Y={servo_y_smoothed:.2f}")
+
+                        if 88 < servo_x_smoothed < 92:
+                            servo_x_smoothed = 90
+
+                        servo_list = [servo_x_smoothed, servo_y_smoothed]
+                        for i in range(len(names_of_objects)):
+                            if name_of_object == names_of_objects[i]:
+                                servo_list.append(i)
+                        if koeff == 2:
+                            send_list(servo_list)
+                            koeff = 0
+                        time.sleep(0.2)
+                else:
+                    print("Coordinates are over the image")
+            else:
+                print("Center of object is not counted.")
+        else:
+            # Если объект не обнаружен
+            annotated_frame = frame.copy()
+            print("no detection on image.")
+
+        # Визуализация центра кадра
         cv2.line(annotated_frame, (x_len // 2, 0), (x_len // 2, y_len), (255, 0, 0), thickness=2)
         cv2.line(annotated_frame, (0, y_len // 2), (x_len, y_len // 2), (255, 0, 0), thickness=2)
 
+        # Отображение кадра
         cv2.imshow("TANKS", annotated_frame)
-
-        coordinates_list.clear()
-        coordinate_of_points = ()
-        object_tracking_list.clear()
-
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-    else:
-        break
 
-cap.release()
-cv2.destroyWindow()
+finally:
+    # Освобождение ресурсов
+    cap.release()
+    cv2.destroyAllWindows()
+    arduino.close()
