@@ -1,9 +1,9 @@
 import cv2
 from ultralytics import YOLO
 import serial
+import numpy as np
 import time
 
-koeff = 1.1
 name_of_object = None
 x_len = 640
 y_len = 480
@@ -13,7 +13,6 @@ names_of_objects = ['abrams', 'btr-80', 'btr-striker', 'leopard', 'T-90', 'destr
 
 port = '/dev/ttyUSB0'
 arduino = serial.Serial(port, 115200, timeout=1)
-time.sleep(2)
 
 model_ncnn_path = "/home/andrey/tank_ai/yolo_model/best_ncnn_model"
 model_path = "/home/andrey/PycharmProjects/Tank_AI/runs/detect/train/weights/best.pt"
@@ -35,6 +34,10 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, y_len)
 # Размер окна для скользящего среднего
 window_size = 5
 
+# Списки для хранения последних значений координат центра
+center_x_values = []
+center_y_values = []
+
 # Списки для хранения последних значений углов
 servo_x_values = []
 servo_y_values = []
@@ -46,8 +49,6 @@ def send_list(data_list):
     print(f"Sent: {data_list}")
 
     response = arduino.readline().decode().strip()
-    while not response:
-        response = arduino.readline().decode().strip()
     print(f"Received: {response}")
 
 
@@ -59,43 +60,34 @@ def calculate_coordinates_of_point(coordinates_list):
         return center_x, center_y
     return None
 
-
-def calculate_object_tracking(x_len, y_len, center_point, angle_horizontal, angle_vertical):
-    if not center_point:
-        return None
-
-    center_x, center_y = center_point
-
-    dx = center_x - x_len // 2
-    dy = center_y - y_len // 2
-
-    angle_x = (dx / (x_len // 2)) * (angle_horizontal / 2)
-    angle_y = (dy / (y_len // 2)) * (angle_vertical / 2)
-
-    servo_x = 90 - angle_x
-    servo_x = max(0, min(180, servo_x))
-
-    servo_y = 112.5 - angle_y
-    servo_y = max(45, min(180, servo_y))
-
-    return servo_x, servo_y
-
-
-def moving_average(values, new_value, window_size):
-    """
-    Добавляет новое значение в список и возвращает среднее значение.
-    :param values: Список последних значений.
-    :param new_value: Новое значение для добавления.
-    :param window_size: Размер окна (количество значений для усреднения).
-    :return: Среднее значение.
-    """
-    values.append(new_value)
-    if len(values) > window_size:
-        values.pop(0)  # Удаляем самое старое значение
-    return sum(values) / len(values)
-
+def vector(center_point, x_len, y_len):
+    delta_x, delta_y = 0, 0
+    object_x, object_y = center_point[0], center_point[1]
+    image_center_x = x_len // 2
+    image_center_y = y_len // 2
+    traking_vector_len = np.sqrt((image_center_x - object_x) ** 2 + (image_center_y - object_y) ** 2)
+    if traking_vector_len == 0:
+        return delta_x, delta_y
+    koeff = int(np.log(traking_vector_len) / 3)
+    if traking_vector_len <= 70:
+        delta_x = 0
+        delta_y = 0
+    elif traking_vector_len > 70 and 0 < object_x <= 320 and 0 < object_y <= 240:
+        delta_x += koeff
+        delta_y += koeff
+    elif traking_vector_len > 70 and 320 < object_x <= 640 and 0 < object_y <= 240:
+        delta_x -= koeff
+        delta_y += koeff
+    elif traking_vector_len > 70 and 0 < object_x <= 320 and 240 < object_y <= 480:
+        delta_x += koeff
+        delta_y -= koeff
+    elif traking_vector_len > 70 and 320 < object_x <= 640 and 240 < object_y <= 480:
+        delta_x -= koeff
+        delta_y -= koeff
+    return delta_x, delta_y
 
 try:
+    angle_x, angle_y = 90, 90
     while True:
         # Захват кадра с веб-камеры
         ret, frame = cap.read()
@@ -122,40 +114,25 @@ try:
 
             center_point = calculate_coordinates_of_point(coordinates_list)
             if center_point:
-                print(f"Detect image {center_point}")
-                if 0 <= center_point[0] < x_len and 0 <= center_point[1] < y_len:
-                    # Визуализация центра объекта
-                    cv2.circle(annotated_frame, center_point, 5, (0, 255, 0), -1)
+                dx, dy = vector(center_point, x_len, y_len)
+                cv2.circle(annotated_frame, center_point, 2, (0, 0, 255), thickness=2)
+                cv2.line(annotated_frame, (x_len // 2, y_len // 2), center_point, (0, 255, 0), thickness=2)
+                angle_x += dx
+                angle_y += dy
+                if angle_x >= 180:
+                    angle_x = 90
+                elif angle_x <= 0:
+                    angle_x = 90
+                elif angle_y >= 180:
+                    angle_x = 90
+                elif angle_y <= 0:
+                    angle_y = 90
+                servo_list = [angle_x, angle_y]
+                for i in range(len(names_of_objects)):
+                    if names_of_objects[i] == name_of_object:
+                        servo_list.append(names_of_objects[i])
+                send_list(servo_list)
 
-                    angles = calculate_object_tracking(x_len, y_len, center_point,
-                                                       angle_tracking_camera_horizontal,
-                                                       angle_tracking_camera_vertical)
-
-                    if angles:
-                        servo_x, servo_y = angles
-
-                        # Применяем скользящее среднее для сглаживания углов
-                        servo_x_smoothed = moving_average(servo_x_values, servo_x, window_size)
-                        servo_y_smoothed = moving_average(servo_y_values, servo_y, window_size)
-
-                        print(f"Smoothed angles for servo: X={servo_x_smoothed:.2f}, Y={servo_y_smoothed:.2f}")
-
-                        # Коррекция угла servo_x (если нужно)
-                        if servo_x_smoothed > 90:
-                            servo_x_smoothed += 7
-                        elif servo_x_smoothed < 90:
-                            servo_x_smoothed -= 7
-
-                        # Формируем список для отправки
-                        servo_list = [servo_x_smoothed, servo_y_smoothed]
-                        for i in range(len(names_of_objects)):
-                            if name_of_object == names_of_objects[i]:
-                                servo_list.append(i)
-                        send_list(servo_list)
-                else:
-                    print("Coordinates are over the image")
-            else:
-                print("Center of object is not counted.")
         else:
             # Если объект не обнаружен
             annotated_frame = frame.copy()
@@ -169,7 +146,6 @@ try:
         cv2.imshow("TANKS", annotated_frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-
 finally:
     # Освобождение ресурсов
     cap.release()

@@ -6,16 +6,16 @@ from tqdm import tqdm
 import shutil
 
 input_folders = [
-    'dataset//abrams/images',
-    'dataset//btr-80/images',
-    'dataset//btr-striker/images',
-    'dataset//leopard/images',
-    'dataset//T-90/images',
-    'dataset//destroyed_tank/images'
+    'dataset/abrams/images',
+    'dataset/btr-80/images',
+    'dataset/destroyed_tank/images',
+    'dataset/leopard/images',
+    'dataset/btr-striker/images',
+    'dataset/T-90/images'
 ]
 
-BASE_DIR_ABSOLUTE = "/"
-OUT_DIR = '../dataset_prepared'
+BASE_DIR_ABSOLUTE = "/home/andrey/PycharmProjects/Tank_AI"
+OUT_DIR = '/home/andrey/PycharmProjects/Tank_AI/dataset_prepared'
 
 OUT_IMAGES = os.path.join(OUT_DIR, 'images')
 OUT_LABELS = os.path.join(OUT_DIR, 'labels')
@@ -43,8 +43,9 @@ for sf in input_folders:
     os.chdir(BASE_DIR_ABSOLUTE)
     os.chdir(sf)
 
-    for filename in glob.glob("*.jpg"):
-        source[sf].append(filename)
+    for filename in glob.glob("*.*"):
+        if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+            source[sf].append(filename)
 
 train = {}
 val = {}
@@ -56,6 +57,11 @@ for sk, sv in source.items():
     val.setdefault(sk, [])
     train[sk] = sv[:split_index]  # Первые 80% для тренировки
     val[sk] = sv[split_index:]  # Остальные 20% для валидации
+
+    print(f"Folder: {sk}")
+    print(f"Total images: {len(sv)}")
+    print(f"Train images: {len(train[sk])}")
+    print(f"Val images: {len(val[sk])}")
 
 train_sum = 0
 val_sum = 0
@@ -74,39 +80,41 @@ print("\nCopying TRAIN source items to prepared folder ...")
 for sk, sv in tqdm(train.items()):
     for item in tqdm(sv):
         imgfile_source = os.path.join(BASE_DIR_ABSOLUTE, sk, item)
-        imgfile_dest = os.path.join(BASE_DIR_ABSOLUTE, OUT_TRAIN_IMAGES, item)
+        imgfile_dest = os.path.join(BASE_DIR_ABSOLUTE, OUT_TRAIN_IMAGES, f"{os.path.basename(sk)}_{item}")
+
+        txt_file = os.path.splitext(item)[0] + '.txt'
+        txtfile_source = os.path.join(BASE_DIR_ABSOLUTE, sk.replace('images', 'labels'), txt_file)
+
+        if not os.path.exists(txtfile_source):
+            print(f"Label file not found: {txtfile_source}")
+            continue  # Пропускаем изображение, если нет файла с меткой
 
         os.makedirs(os.path.dirname(imgfile_dest), exist_ok=True)
         shutil.copyfile(imgfile_source, imgfile_dest)
 
-        txt_file = os.path.splitext(item)[0] + '.txt'
-        txtfile_source = os.path.join(BASE_DIR_ABSOLUTE, sk.replace('images', 'labels'), txt_file)
-        txtfile_dest = os.path.join(BASE_DIR_ABSOLUTE, OUT_TRAIN_LABELS, txt_file)
-
-        if os.path.exists(txtfile_source):
-            os.makedirs(os.path.dirname(txtfile_dest), exist_ok=True)
-            shutil.copyfile(txtfile_source, txtfile_dest)
-        else:
-            print(f"Label file not found: {txtfile_source}")
+        txtfile_dest = os.path.join(BASE_DIR_ABSOLUTE, OUT_TRAIN_LABELS, f"{os.path.basename(sk)}_{txt_file}")
+        os.makedirs(os.path.dirname(txtfile_dest), exist_ok=True)
+        shutil.copyfile(txtfile_source, txtfile_dest)
 
 os.chdir(BASE_DIR_ABSOLUTE)
 print("\nCopying VAL source items to prepared folder ...")
 for sk, sv in tqdm(val.items()):
     for item in tqdm(sv):
         imgfile_source = os.path.join(BASE_DIR_ABSOLUTE, sk, item)
-        imgfile_dest = os.path.join(BASE_DIR_ABSOLUTE, OUT_VAL_IMAGES, item)
+        imgfile_dest = os.path.join(BASE_DIR_ABSOLUTE, OUT_VAL_IMAGES, f"{os.path.basename(sk)}_{item}")
+
+        txt_file = os.path.splitext(item)[0] + '.txt'
+        txtfile_source = os.path.join(BASE_DIR_ABSOLUTE, sk.replace('images', 'labels'), txt_file)
+
+        if not os.path.exists(txtfile_source):
+            print(f"Label file not found: {txtfile_source}")
+            continue  # Пропускаем изображение, если нет файла с меткой
 
         os.makedirs(os.path.dirname(imgfile_dest), exist_ok=True)
         shutil.copyfile(imgfile_source, imgfile_dest)
 
-        txt_file = os.path.splitext(item)[0] + '.txt'
-        txtfile_source = os.path.join(BASE_DIR_ABSOLUTE, sk.replace('images', 'labels'), txt_file)
-        txtfile_dest = os.path.join(BASE_DIR_ABSOLUTE, OUT_VAL_LABELS, txt_file)
-
-        if os.path.exists(txtfile_source):
-            os.makedirs(os.path.dirname(txtfile_dest), exist_ok=True)
-            shutil.copyfile(txtfile_source, txtfile_dest)
-        else:
-            print(f"Label file not found: {txtfile_source}")
+        txtfile_dest = os.path.join(BASE_DIR_ABSOLUTE, OUT_VAL_LABELS, f"{os.path.basename(sk)}_{txt_file}")
+        os.makedirs(os.path.dirname(txtfile_dest), exist_ok=True)
+        shutil.copyfile(txtfile_source, txtfile_dest)
 
 print("\nData preparation completed!")
