@@ -7,7 +7,7 @@
 Servo servox;
 Servo servoy;
 
-String dataFromBluetooth = "Enemy";  // Переменная для хранения текущего значения от Bluetooth
+String dataFromBluetooth = "dont shoot";  // Переменная для хранения текущего значения от Bluetooth
 String currentBluetoothState = "";   // Переменная для хранения текущего состояния
 
 int MaxSpd = 130;
@@ -18,6 +18,8 @@ int past_angle_x = 90;
 int past_angle_y = 90;
 int angle_x;
 int angle_y;
+
+const int sveto_pin = 13;
 
 const int FwdPin_A = 6;
 const int BwdPin_A = 7;
@@ -45,8 +47,11 @@ void setup() {
 
   Serial.begin(115200);
   delay(3000);
-
   Serial1.begin(9600);
+
+  pinMode(sveto_pin, 1);
+
+  digitalWrite(sveto_pin, 1);
 
   // Инициализация массивов для скользящего среднего
   for (int i = 0; i < numReadings; i++) {
@@ -81,12 +86,12 @@ void loop() {
     }
 
     // Выводим полученные значения для отладки
-    Serial.print("Received values: ");
     for (int i = 0; i < 3; i++) {
       Serial.print(values[i]);
-      if (i < 2) Serial.print(", ");
+      if (i < 2) Serial.print(",");
     }
-    Serial.println();
+    Serial.print(",");
+    Serial.println(dataFromBluetooth);
 
     // Извлекаем углы
     angle_x = values[0];
@@ -107,19 +112,17 @@ void loop() {
     readIndex_y = (readIndex_y + 1) % numReadings; // Переходим к следующему индексу
     average_y = total_y / numReadings;           // Вычисляем среднее
 
-    // Плавное движение сервопривода X
-    int step_x = (average_x > past_angle_x) ? 1 : -1; // Шаг изменения угла
+    int step_x = (average_x > past_angle_x) ? 1 : -1;
     for (int i = past_angle_x; i != average_x; i += step_x) {
       servox.write(i);
-      delay(15); // Задержка для плавности
+      delay(10); // Задержка для плавности
     }
     past_angle_x = average_x;
 
-    // Плавное движение сервопривода Y
-    int step_y = (average_y > past_angle_y) ? 1 : -1; // Шаг изменения угла
+    int step_y = (average_y > past_angle_y) ? 1 : -1;
     for (int i = past_angle_y; i != average_y; i += step_y) {
       servoy.write(i);
-      delay(15); // Задержка для плавности
+      delay(10);
     }
     past_angle_y = average_y;
   }
@@ -127,30 +130,32 @@ void loop() {
   // Обработка данных от Bluetooth
   if (Serial1.available()) {
     dataFromBluetooth = Serial1.readString();
-    dataFromBluetooth.trim();  // Убираем лишние пробелы и символы
+    dataFromBluetooth.trim();
 
-    // Если новое значение отличается от текущего
     if (dataFromBluetooth != currentBluetoothState) {
-      currentBluetoothState = dataFromBluetooth;  // Обновляем текущее состояние
+      currentBluetoothState = dataFromBluetooth;
       Serial1.print("New Bluetooth state: ");
-      Serial1.println(currentBluetoothState);
-
-      // Выполняем действия в зависимости от нового состояния
-      if (currentBluetoothState == "Enemy" && (ind_of_object == 0 || ind_of_object == 2 || ind_of_object == 3)) {
-        analogWrite(BwdPin_A, 0);
-        analogWrite(FwdPin_A, MaxSpd);
-        delay(1000);
-        analogWrite(FwdPin_A, 0);
-      } else if (currentBluetoothState == "Dont shoot") {
-        analogWrite(FwdPin_A, 0);
-      } else if (currentBluetoothState == "Ours") {
-        analogWrite(BwdPin_A, 0);
-        analogWrite(FwdPin_A, MaxSpd);
-        delay(300);
-        analogWrite(FwdPin_A, 0);
-      } else {
-        analogWrite(FwdPin_A, 0);
-      }
+          Serial1.println(currentBluetoothState);
     }
+    if (currentBluetoothState == "enemy" && (ind_of_object == 0 or ind_of_object == 2 or ind_of_object == 3)) {
+          Serial1.println("Shooting enemy");
+          analogWrite(BwdPin_A, 0);
+          analogWrite(FwdPin_A, MaxSpd);
+          delay(600);
+          analogWrite(FwdPin_A, 0);
+      } else if (currentBluetoothState == "dont shoot") {
+          analogWrite(FwdPin_A, 0);
+          Serial1.println("Dont shooting");
+      } else if (currentBluetoothState == "ours") {
+          Serial1.println("Shooting ours and enemy");
+          analogWrite(BwdPin_A, 0);
+          analogWrite(FwdPin_A, MaxSpd);
+          delay(600);
+          analogWrite(FwdPin_A, 0);
+      } else {
+          analogWrite(FwdPin_A, 0);
+          Serial1.println("Dont shooting");
+      }
+      dataFromBluetooth = "dont shoot";
   }
 }
