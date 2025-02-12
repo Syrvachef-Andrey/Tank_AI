@@ -38,6 +38,9 @@ int total_y = 0;             // Сумма значений angle_y
 int average_x = 0;           // Среднее значение angle_x
 int average_y = 0;           // Среднее значение angle_y
 
+unsigned long lastBluetoothCheckTime = 0;  // Время последнего выполнения блока Bluetooth
+const unsigned long bluetoothCheckInterval = 5000;  // Интервал проверки Bluetooth (5 секунд)
+
 void setup() {
   servox.attach(10);  // Сервопривод X на пин 10
   servoy.attach(11);   // Сервопривод Y на пин 11
@@ -63,6 +66,7 @@ void setup() {
 }
 
 void loop() {
+  // Обработка данных от Serial (как в оригинальном коде)
   if (Serial.available() > 0) {
     String message = Serial.readStringUntil('\n');
     message.trim();
@@ -127,7 +131,7 @@ void loop() {
     past_angle_y = average_y;
   }
 
-  // Обработка данных от Bluetooth
+  // Обновление значения от Bluetooth (выполняется сразу при получении данных)
   if (Serial1.available()) {
     dataFromBluetooth = Serial1.readString();
     dataFromBluetooth.trim();
@@ -135,27 +139,34 @@ void loop() {
     if (dataFromBluetooth != currentBluetoothState) {
       currentBluetoothState = dataFromBluetooth;
       Serial1.print("New Bluetooth state: ");
-          Serial1.println(currentBluetoothState);
+      Serial1.println(currentBluetoothState);
     }
-    if (currentBluetoothState == "enemy" && (ind_of_object == 0 or ind_of_object == 2 or ind_of_object == 3)) {
-          Serial1.println("Shooting enemy");
-          analogWrite(BwdPin_A, 0);
-          analogWrite(FwdPin_A, MaxSpd);
-          delay(600);
-          analogWrite(FwdPin_A, 0);
-      } else if (currentBluetoothState == "dont shoot") {
-          analogWrite(FwdPin_A, 0);
-          Serial1.println("Dont shooting");
-      } else if (currentBluetoothState == "ours") {
-          Serial1.println("Shooting ours and enemy");
-          analogWrite(BwdPin_A, 0);
-          analogWrite(FwdPin_A, MaxSpd);
-          delay(600);
-          analogWrite(FwdPin_A, 0);
-      } else {
-          analogWrite(FwdPin_A, 0);
-          Serial1.println("Dont shooting");
-      }
-      dataFromBluetooth = "dont shoot";
+  }
+
+  // Выполнение блока условий раз в 5 секунд
+  unsigned long currentMillis = millis();
+  if (currentMillis - lastBluetoothCheckTime >= bluetoothCheckInterval) {
+    lastBluetoothCheckTime = currentMillis;  // Обновляем время последней проверки
+
+    if (currentBluetoothState == "enemy" && (ind_of_object == 0 || ind_of_object == 2 || ind_of_object == 3)) {
+      Serial1.println("Shooting enemy");
+      analogWrite(BwdPin_A, 0);
+      analogWrite(FwdPin_A, MaxSpd);
+      delay(600);
+      analogWrite(FwdPin_A, 0);
+    } else if (currentBluetoothState == "dont shoot") {
+      analogWrite(FwdPin_A, 0);
+      Serial1.println("Dont shooting");
+    } else if (currentBluetoothState == "ours") {
+      Serial1.println("Shooting ours and enemy");
+      analogWrite(BwdPin_A, 0);
+      analogWrite(FwdPin_A, MaxSpd);
+      delay(600);
+      analogWrite(FwdPin_A, 0);
+    } else {
+      analogWrite(FwdPin_A, 0);
+      Serial1.println("Dont shooting");
+    }
+//    dataFromBluetooth = "dont shoot";  // Сброс состояния после выполнения
   }
 }
