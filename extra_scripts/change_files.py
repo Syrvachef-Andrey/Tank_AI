@@ -1,6 +1,6 @@
 import os
 
-directory_path = '/dataset/destroyed_tank/labels'
+directory_path = '/dataset/abrams/labels'
 
 files = [f for f in os.listdir(directory_path) if
          os.path.isfile(os.path.join(directory_path, f)) and f.endswith('.txt')]
@@ -19,7 +19,7 @@ for file_name in files:
 
         for line in lines:
             if len(line) > 0:
-                modified_line = '5' + line[1:]
+                modified_line = '0' + line[1:]
                 f.write(modified_line)
             else:
                 f.write(line)

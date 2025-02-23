@@ -6,16 +6,16 @@ from tqdm import tqdm
 import shutil
 
 input_folders = [
-    'dataset/abrams/images',
-    'dataset/btr-80/images',
-    'dataset/destroyed_tank/images',
+    'dataset/abrams/jpg_images',
+    'dataset/btr-80/jpg_images',
+    'dataset/destroyed_tank/jpg_images',
     # 'dataset/leopard/images',
     # 'dataset/btr-striker/images',
     # 'dataset/T-90/images'
 ]
 
-BASE_DIR_ABSOLUTE = "/home/andrey/PycharmProjects/Tank_AI"
-OUT_DIR = '/home/andrey/PycharmProjects/Tank_AI/dataset_prepared'
+BASE_DIR_ABSOLUTE = "/"
+OUT_DIR = '/dataset_prepared'
 
 OUT_IMAGES = os.path.join(OUT_DIR, 'images')
 OUT_LABELS = os.path.join(OUT_DIR, 'labels')
@@ -96,7 +96,7 @@ for sk, sv in tqdm(train.items()):
         imgfile_dest = os.path.join(BASE_DIR_ABSOLUTE, OUT_TRAIN_IMAGES, f"{os.path.basename(sk)}_{item}")
 
         txt_file = os.path.splitext(item)[0] + '.txt'
-        txtfile_source = os.path.join(BASE_DIR_ABSOLUTE, sk.replace('images', 'labels'), txt_file)
+        txtfile_source = os.path.join(BASE_DIR_ABSOLUTE, sk.replace('jpg_images', 'labels'), txt_file)
 
         if not os.path.exists(txtfile_source):
             print(f"Label file not found: {txtfile_source}")
@@ -117,7 +117,7 @@ for sk, sv in tqdm(val.items()):
         imgfile_dest = os.path.join(BASE_DIR_ABSOLUTE, OUT_VAL_IMAGES, f"{os.path.basename(sk)}_{item}")
 
         txt_file = os.path.splitext(item)[0] + '.txt'
-        txtfile_source = os.path.join(BASE_DIR_ABSOLUTE, sk.replace('images', 'labels'), txt_file)
+        txtfile_source = os.path.join(BASE_DIR_ABSOLUTE, sk.replace('jpg_images', 'labels'), txt_file)
 
         if not os.path.exists(txtfile_source):
             print(f"Label file not found: {txtfile_source}")
@@ -138,7 +138,7 @@ for sk, sv in tqdm(test.items()):
         imgfile_dest = os.path.join(BASE_DIR_ABSOLUTE, OUT_TEST_IMAGES, f"{os.path.basename(sk)}_{item}")
 
         txt_file = os.path.splitext(item)[0] + '.txt'
-        txtfile_source = os.path.join(BASE_DIR_ABSOLUTE, sk.replace('images', 'labels'), txt_file)
+        txtfile_source = os.path.join(BASE_DIR_ABSOLUTE, sk.replace('jpg_images', 'labels'), txt_file)
 
         if not os.path.exists(txtfile_source):
             print(f"Label file not found: {txtfile_source}")

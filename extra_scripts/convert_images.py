@@ -3,8 +3,8 @@ import os
 import shutil
 
 # Путь к папке с изображениями
-input_folder = '/home/andrey/PycharmProjects/Tank_AI/dataset/T-90/images'
-output_folder = '/home/andrey/PycharmProjects/Tank_AI/dataset/T-90/jpg_images'
+input_folder = '/home/andrey/dataset_v2/soilders'
+output_folder = '/home/andrey/dataset_v2/soilders_jpg'
 
 # Создаем папку для сохранения изображений в формате JPG, если она не существует
 if not os.path.exists(output_folder):

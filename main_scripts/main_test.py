@@ -2,11 +2,14 @@ import cv2
 from ultralytics import YOLO
 import serial
 import numpy as np
-
+import configparser
 
 class Arduino:
     def __init__(self):
-        self.port = '/dev/ttyUSB0'
+        self.config = configparser.ConfigParser()
+        self.config.read("config.ini")
+
+        self.port = self.config['arduino']['port']
         self.arduino = serial.Serial(self.port, 115200, timeout=1)
 
     def send_list(self, data_list):
@@ -14,11 +17,18 @@ class Arduino:
         self.arduino.write(message.encode())
         print(f"Sent: {data_list}")
 
+    def collect_data(self):
         response = self.arduino.readline().decode().strip()
-        print(f"Received: {response}")
+        if not response:
+            print("No data from arduino")
+            return ''
+        else:
+            print(f"Received: {response}")
+            return response
 
 class Computer:
     def __init__(self):
+        self.past_name_of_object = None
         self.name_of_object = None
         self.x_len = 640
         self.y_len = 480
@@ -26,14 +36,18 @@ class Computer:
         self.angle_tracking_camera_vertical = 40
         self.names_of_objects = ['abrams', 'btr-80', 'btr-striker', 'leopard', 'T-90', 'destroyed_tank']
 
-        self.model_ncnn_path = "/home/andrey/tank_ai/yolo_model/best_ncnn_model"
-        self.model_path = "/home/andrey/PycharmProjects/Tank_AI/runs/detect/train4/weights/best.pt"
+        self.config = configparser.ConfigParser()
+        self.config.read("config.ini")
+
+        self.string_from_arduino = ''
+
+        self.model_path = self.config['yolo']['path_to_model']
         self.model = YOLO(self.model_path)
         if self.model is None:
             print("no yolo model")
             exit(1)
 
-        self.cap = cv2.VideoCapture(0)  # 0 — индекс веб-камеры по умолчанию
+        self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
             print("Ошибка: Не удалось открыть веб-камеру.")
             exit(1)
@@ -72,7 +86,7 @@ class Computer:
         if traking_vector_len == 0:
             return delta_x, delta_y
         koeff = int(np.log(traking_vector_len) / 3)
-        if traking_vector_len <= 80:
+        if traking_vector_len <= 60:
             delta_x = 0
             delta_y = 0
         elif traking_vector_len > 70 and 0 < object_x <= 320 and 0 < object_y <= 240:
@@ -134,19 +148,20 @@ class Computer:
                         servo_list = [angle_x, angle_y]
                         for i in range(len(self.names_of_objects)):
                             if self.names_of_objects[i] == self.name_of_object:
-                                servo_list.append(self.names_of_objects[i])
+                                servo_list.append(i)
                         self.arduino_class.send_list(servo_list)
-
+                        self.string_from_arduino = self.arduino_class.collect_data()
+                    self.past_name_of_object = self.name_of_object
                 else:
                     # Если объект не обнаружен
                     annotated_frame = frame.copy()
+                    self.string_from_arduino = None
                     print("no detection on image.")
 
                 # Визуализация центра кадра
                 cv2.line(annotated_frame, (self.x_len // 2, 0), (self.x_len // 2, self.y_len), (255, 0, 0), thickness=2)
                 cv2.line(annotated_frame, (0, self.y_len // 2), (self.x_len, self.y_len // 2), (255, 0, 0), thickness=2)
 
-                # Отображение кадра
                 cv2.imshow("TANKS", annotated_frame)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
