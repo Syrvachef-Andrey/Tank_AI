@@ -10,7 +10,7 @@ Servo servoy;
 String dataFromBluetooth = "dont shoot";  // Переменная для хранения текущего значения от Bluetooth
 String currentBluetoothState = "";   // Переменная для хранения текущего состояния
 
-int MaxSpd = 130;
+int MaxSpd = 160;
 
 int ind_of_object;
 
@@ -157,7 +157,7 @@ void loop() {
     } else if (currentBluetoothState == "dont shoot") {
       analogWrite(FwdPin_A, 0);
       Serial1.println("Dont shooting");
-    } else if (currentBluetoothState == "ours") {
+    } else if (currentBluetoothState == "ours" && (ind_of_object == 0 || ind_of_object == 1)) {
       Serial1.println("Shooting ours and enemy");
       analogWrite(BwdPin_A, 0);
       analogWrite(FwdPin_A, MaxSpd);
